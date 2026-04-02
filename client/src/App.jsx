@@ -42,20 +42,23 @@ function App() {
     async function loadCars() {
       try {
         setStatus("loading");
+        const staticDataUrl = `${import.meta.env.BASE_URL}cars.json`;
+        const sources = import.meta.env.DEV
+          ? [
+              { url: "/cars", timeoutMs: 1500 },
+              { url: staticDataUrl },
+            ]
+          : [{ url: staticDataUrl }];
+
         let data = null;
         let lastError = null;
 
-        try {
-          data = await fetchJson("/cars", { timeoutMs: 1500 });
-        } catch (apiError) {
-          lastError = apiError;
-        }
-
-        if (!data) {
+        for (const source of sources) {
           try {
-            data = await fetchJson("/cars.json");
-          } catch (staticError) {
-            lastError = staticError;
+            data = await fetchJson(source.url, { timeoutMs: source.timeoutMs ?? 0 });
+            break;
+          } catch (sourceError) {
+            lastError = sourceError;
           }
         }
 

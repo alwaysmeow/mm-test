@@ -1,0 +1,42 @@
+name: Refresh Static Cars Data
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install server dependencies
+        run: pip install -r server/requirements.txt
+
+      - name: Run scraper
+        run: python server/scraper.py
+
+      - name: Run translator
+        run: python server/translate_to_english.py
+
+      - name: Sync client static JSON
+        run: cp server/data/encar_cars_en.json client/public/cars.json
+
+      - name: Commit updated static data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add client/public/cars.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update static cars data"
+          git push
