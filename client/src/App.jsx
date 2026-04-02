@@ -8,6 +8,24 @@ import SiteHeader from "./components/SiteHeader";
 import StatusPanel from "./components/StatusPanel";
 import { getOriginLabel, parseUsdPrice } from "./utils/carFormatters";
 
+async function fetchJson(source, { timeoutMs = 0 } = {}) {
+  const controller = new AbortController();
+  const timeoutId =
+    timeoutMs > 0 ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  try {
+    const response = await fetch(source, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(`${source} failed with status ${response.status}`);
+    }
+    return await response.json();
+  } finally {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
 function App() {
   const [payload, setPayload] = useState(null);
   const [status, setStatus] = useState("loading");
@@ -24,11 +42,27 @@ function App() {
     async function loadCars() {
       try {
         setStatus("loading");
-        const response = await fetch("/cars");
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
+        let data = null;
+        let lastError = null;
+
+        try {
+          data = await fetchJson("/cars", { timeoutMs: 1500 });
+        } catch (apiError) {
+          lastError = apiError;
         }
-        const data = await response.json();
+
+        if (!data) {
+          try {
+            data = await fetchJson("/cars.json");
+          } catch (staticError) {
+            lastError = staticError;
+          }
+        }
+
+        if (!data) {
+          throw lastError ?? new Error("No data source available");
+        }
+
         if (!cancelled) {
           setPayload(data);
           setStatus("ready");

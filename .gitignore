@@ -20,3 +20,7 @@ dist/
 # Editor / OS
 .idea/
 .vscode/
+
+# Generated backend data
+server/data/*.json
+!server/data/.gitkeep
